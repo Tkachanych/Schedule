@@ -1,0 +1,1372 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Расписание: пересечения</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      margin: 20px;
+      background: #f2f4f8;
+      color: #222;
+    }
+
+    h1, h2, h3 {
+      margin-top: 0;
+    }
+
+    button, input, select {
+      font: inherit;
+    }
+
+    code {
+      background: #f4f4f8;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 1px 5px;
+    }
+
+    .panel {
+      background: #fff;
+      border: 1px solid #d9dee7;
+      border-radius: 14px;
+      padding: 16px;
+      margin: 16px 0;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    button {
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid #88a;
+      background: #f4f7ff;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #e8efff;
+    }
+
+    input,
+    select {
+      padding: 8px;
+      border-radius: 10px;
+      border: 1px solid #bbb;
+      min-width: 120px;
+    }
+
+    #lesson-title,
+    #bell-name {
+      min-width: 220px;
+    }
+
+    form.inline {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th,
+    td {
+      border: 1px solid #d9dee7;
+      padding: 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .week-block {
+      margin-bottom: 18px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: 6px;
+      border: 2px solid;
+      display: inline-block;
+    }
+
+    .swatch-personal {
+      background: #f2fff6;
+      border-color: #22a55a;
+    }
+
+    .swatch-class {
+      background: #f2f7ff;
+      border-color: #2f6fdb;
+    }
+
+    .swatch-conflict {
+      background: #ffe4e4;
+      border-color: #d33;
+    }
+
+    .week {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(135px, 1fr));
+      gap: 8px;
+      overflow: auto;
+    }
+
+    .day {
+      background: #fbfcff;
+      border: 1px solid #d9dee7;
+      border-radius: 12px;
+      padding: 8px;
+      min-height: 130px;
+    }
+
+    .day-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .day-add {
+      min-width: 28px;
+      padding: 0 8px;
+      border-radius: 8px;
+      line-height: 26px;
+    }
+
+    .lesson {
+      border-radius: 10px;
+      padding: 8px;
+      margin-top: 8px;
+      background: #fff;
+      border: 2px solid #d9dee7;
+      border-left-width: 8px;
+      position: relative;
+    }
+
+    .lesson.type-personal {
+      background: #f2fff6;
+      border-left-color: #22a55a;
+    }
+
+    .lesson.type-class {
+      background: #f2f7ff;
+      border-left-color: #2f6fdb;
+    }
+
+    .lesson.conflict {
+      background: #ffe4e4;
+      border-color: #d33;
+    }
+
+    .lesson.type-personal.conflict {
+      border-left-color: #22a55a;
+    }
+
+    .lesson.type-class.conflict {
+      border-left-color: #2f6fdb;
+    }
+
+    .time {
+      font-weight: 700;
+    }
+
+    .empty {
+      color: #999;
+      margin-top: 8px;
+    }
+
+    .conflict-list {
+      color: #a22;
+      margin: 8px 0 0;
+      padding-left: 20px;
+    }
+
+    .ok {
+      color: #0a7;
+      font-weight: 700;
+    }
+
+    .muted {
+      color: #666;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    details summary {
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .status {
+      margin: 10px 0;
+      font-weight: 700;
+      min-height: 1.2em;
+    }
+
+    .checkbox {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .checkbox input {
+      min-width: auto;
+    }
+
+    .actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    @media (max-width: 900px) {
+      .week {
+        grid-template-columns: repeat(2, minmax(150px, 1fr));
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Расписание и пересечения</h1>
+
+  <p class="muted">
+    Занятия с пересечениями подсвечиваются красным.
+    Если рядом лежит файл <code>schedule-config.js</code>, страница подтягивает его при открытии.
+  </p>
+
+  <div id="status" class="status" aria-live="polite"></div>
+
+  <section class="panel">
+    <h2>Недели</h2>
+
+    <div class="legend">
+      <span class="legend-item">
+        <span class="swatch swatch-personal"></span>
+        Персональное
+      </span>
+
+      <span class="legend-item">
+        <span class="swatch swatch-class"></span>
+        С классом
+      </span>
+
+      <span class="legend-item">
+        <span class="swatch swatch-conflict"></span>
+        Конфликт
+      </span>
+    </div>
+
+    <div id="weeks"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Пересечения</h2>
+    <div id="conflicts"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Добавить занятие</h2>
+
+    <form id="lesson-form" class="inline">
+      <input id="lesson-title" placeholder="Название занятия" required>
+
+      <select id="lesson-day" required>
+        <option value="1">Понедельник</option>
+        <option value="2">Вторник</option>
+        <option value="3">Среда</option>
+        <option value="4">Четверг</option>
+        <option value="5">Пятница</option>
+        <option value="6">Суббота</option>
+        <option value="7">Воскресенье</option>
+      </select>
+
+      <select id="lesson-type" required>
+        <option value="personal">Персональное</option>
+        <option value="class" selected>С классом</option>
+      </select>
+
+      <select id="bell-template">
+        <option value="">Звонки: не выбрано</option>
+      </select>
+
+      <input id="lesson-start" type="time" value="08:30" required>
+      <input id="lesson-end" type="time" value="09:15" required>
+
+      <label class="checkbox">
+        <input id="lesson-continuous" type="checkbox" checked>
+        добавлять подряд
+      </label>
+
+      <button id="lesson-submit" type="submit">Добавить</button>
+      <button id="lesson-cancel" type="button" class="hidden">Отмена</button>
+    </form>
+
+    <p class="muted">
+      Если включена галочка «добавлять подряд», после добавления занятия
+      название очищается, а время сдвигается на длительность добавленного занятия.
+    </p>
+  </section>
+
+  <section class="panel">
+    <h2>Все занятия</h2>
+
+    <table id="lessons-table">
+      <thead>
+        <tr>
+          <th>Название</th>
+          <th>День</th>
+          <th>Тип</th>
+          <th>Время</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h2>Конфиг</h2>
+
+    <div class="toolbar">
+      <button id="export-btn" type="button">Выгрузить конфиг (.js + .json)</button>
+      <button id="export-js-btn" type="button">Только .js</button>
+      <button id="export-json-btn" type="button">Только .json</button>
+      <button id="import-btn" type="button">Загрузить конфиг</button>
+      <input id="import-file" type="file" accept=".json,.js,application/json,text/javascript" class="hidden">
+      <button id="clear-btn" type="button">Очистить всё</button>
+    </div>
+
+    <p class="muted">
+      Кнопка «Выгрузить конфиг» скачает два файла:
+      <code>schedule-config.js</code> и <code>schedule-config.json</code>.
+      Для автоподхвата нужно положить рядом с HTML именно <code>schedule-config.js</code>.
+      После замены файла нажми F5.
+    </p>
+  </section>
+
+  <section class="panel">
+    <details>
+      <summary>Настройка звонков (для взрослых)</summary>
+
+      <p class="muted">
+        Звонки — это шаблоны времени.
+        Их можно выбирать при добавлении занятия.
+        На пересечения влияют фактические начало и конец занятия.
+      </p>
+
+      <form id="bell-form" class="inline">
+        <input id="bell-name" placeholder="Например: 1 урок" required>
+        <input id="bell-start" type="time" value="08:30" required>
+        <input id="bell-end" type="time" value="09:15" required>
+        <button type="submit">Добавить звонок</button>
+      </form>
+
+      <table id="bells-table">
+        <thead>
+          <tr>
+            <th>Название</th>
+            <th>Начало</th>
+            <th>Конец</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </details>
+  </section>
+
+  <!--
+    Если файл schedule-config.js лежит рядом, он подтянется сюда.
+    Если файла нет, страница продолжит работать на данных из браузера.
+  -->
+  <script src="schedule-config.js"></script>
+
+  <script>
+    const STORAGE_KEY = 'school-schedule-config-v1';
+    const EXTERNAL_ID_KEY = 'school-schedule-external-id';
+
+    const dayShort = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    const dayFull = [
+      'Понедельник',
+      'Вторник',
+      'Среда',
+      'Четверг',
+      'Пятница',
+      'Суббота',
+      'Воскресенье'
+    ];
+
+    const weeksEl = document.getElementById('weeks');
+    const conflictsEl = document.getElementById('conflicts');
+    const statusEl = document.getElementById('status');
+
+    const lessonForm = document.getElementById('lesson-form');
+    const lessonTitle = document.getElementById('lesson-title');
+    const lessonDay = document.getElementById('lesson-day');
+    const lessonType = document.getElementById('lesson-type');
+    const bellTemplate = document.getElementById('bell-template');
+    const lessonStart = document.getElementById('lesson-start');
+    const lessonEnd = document.getElementById('lesson-end');
+    const lessonContinuous = document.getElementById('lesson-continuous');
+    const lessonSubmit = document.getElementById('lesson-submit');
+    const lessonCancel = document.getElementById('lesson-cancel');
+    const lessonsTbody = document.querySelector('#lessons-table tbody');
+
+    const bellForm = document.getElementById('bell-form');
+    const bellName = document.getElementById('bell-name');
+    const bellStart = document.getElementById('bell-start');
+    const bellEnd = document.getElementById('bell-end');
+    const bellsTbody = document.querySelector('#bells-table tbody');
+
+    const exportBtn = document.getElementById('export-btn');
+    const exportJsBtn = document.getElementById('export-js-btn');
+    const exportJsonBtn = document.getElementById('export-json-btn');
+    const importBtn = document.getElementById('import-btn');
+    const importFile = document.getElementById('import-file');
+    const clearBtn = document.getElementById('clear-btn');
+
+    let state = {
+      bells: [],
+      lessons: []
+    };
+
+    let editingLessonId = null;
+    let statusTimer = null;
+
+    function uid() {
+      if (window.crypto && crypto.randomUUID) {
+        return crypto.randomUUID();
+      }
+
+      return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(16).slice(2, 10);
+    }
+
+    function validTime(value) {
+      return typeof value === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+    }
+
+    function timeToMin(value) {
+      const [h, m] = value.split(':').map(Number);
+      return h * 60 + m;
+    }
+
+    function minutesToTime(totalMinutes) {
+      const mins = ((Math.round(totalMinutes) % 1440) + 1440) % 1440;
+      const h = String(Math.floor(mins / 60)).padStart(2, '0');
+      const m = String(mins % 60).padStart(2, '0');
+      return `${h}:${m}`;
+    }
+
+    function typeLabel(type) {
+      return type === 'personal' ? 'Персональное' : 'С классом';
+    }
+
+    function setStatus(message, isError = false) {
+      statusEl.textContent = message || '';
+      statusEl.style.color = isError ? '#a22' : '#0a7';
+
+      clearTimeout(statusTimer);
+
+      if (!isError && message) {
+        statusTimer = setTimeout(() => {
+          statusEl.textContent = '';
+        }, 7000);
+      }
+    }
+
+    function normalizeBell(x) {
+      if (
+        !x ||
+        typeof x.name !== 'string' ||
+        !x.name.trim() ||
+        !validTime(x.start) ||
+        !validTime(x.end) ||
+        timeToMin(x.end) <= timeToMin(x.start)
+      ) {
+        return null;
+      }
+
+      return {
+        id: String(x.id || uid()),
+        name: x.name.trim(),
+        start: x.start,
+        end: x.end
+      };
+    }
+
+    function normalizeLesson(x) {
+      const day = Number(x && x.day);
+      const type = x && x.type === 'personal' ? 'personal' : 'class';
+
+      if (
+        !x ||
+        typeof x.title !== 'string' ||
+        !x.title.trim() ||
+        ![1, 2, 3, 4, 5, 6, 7].includes(day) ||
+        !validTime(x.start) ||
+        !validTime(x.end) ||
+        timeToMin(x.end) <= timeToMin(x.start)
+      ) {
+        return null;
+      }
+
+      return {
+        id: String(x.id || uid()),
+        title: x.title.trim(),
+        day,
+        type,
+        start: x.start,
+        end: x.end
+      };
+    }
+
+    function makeUnique(items) {
+      const used = new Set();
+
+      return items.map(item => {
+        let id = String(item.id || uid());
+
+        while (used.has(id)) {
+          id = uid();
+        }
+
+        used.add(id);
+
+        return {
+          ...item,
+          id
+        };
+      });
+    }
+
+    function normalizeState(data) {
+      const bells = [];
+      const lessons = [];
+
+      if (Array.isArray(data)) {
+        for (const item of data) {
+          const lesson = normalizeLesson(item);
+          if (lesson) lessons.push(lesson);
+        }
+      } else if (data && typeof data === 'object') {
+        if (Array.isArray(data.bells)) {
+          for (const item of data.bells) {
+            const bell = normalizeBell(item);
+            if (bell) bells.push(bell);
+          }
+        }
+
+        if (Array.isArray(data.lessons)) {
+          for (const item of data.lessons) {
+            const lesson = normalizeLesson(item);
+            if (lesson) lessons.push(lesson);
+          }
+        }
+      }
+
+      return {
+        bells: makeUnique(bells),
+        lessons: makeUnique(lessons)
+      };
+    }
+
+    function parseConfigText(text) {
+      let trimmed = String(text || '').trim();
+
+      if (trimmed.charCodeAt(0) === 0xFEFF) {
+        trimmed = trimmed.slice(1).trim();
+      }
+
+      if (!trimmed) {
+        throw new Error('Файл пустой');
+      }
+
+      const jsPattern = /^(?:window\.SCHEDULE_CONFIG|const\s+SCHEDULE_CONFIG|let\s+SCHEDULE_CONFIG|var\s+SCHEDULE_CONFIG)\s*=\s*/;
+
+      if (jsPattern.test(trimmed)) {
+        trimmed = trimmed
+          .replace(jsPattern, '')
+          .replace(/;\s*$/, '')
+          .trim();
+      }
+
+      return JSON.parse(trimmed);
+    }
+
+    function loadState() {
+      const external = window.SCHEDULE_CONFIG;
+
+      let raw = null;
+
+      try {
+        raw = localStorage.getItem(STORAGE_KEY);
+      } catch (error) {
+        console.error(error);
+      }
+
+      if (external && typeof external === 'object') {
+        let externalId = null;
+
+        try {
+          externalId = JSON.stringify(external);
+        } catch (error) {
+          console.error(error);
+        }
+
+        let savedExternalId = null;
+
+        try {
+          savedExternalId = localStorage.getItem(EXTERNAL_ID_KEY);
+        } catch (error) {
+          console.error(error);
+        }
+
+        // Если внешнего конфига ещё не было в браузере,
+        // либо файл изменился, либо в браузере нет сохранённых данных —
+        // загружаем из внешнего файла.
+        if (externalId && (!raw || savedExternalId !== externalId)) {
+          const newState = normalizeState(external);
+
+          try {
+            localStorage.setItem(EXTERNAL_ID_KEY, externalId);
+            localStorage.setItem(
+              STORAGE_KEY,
+              JSON.stringify({
+                version: 1,
+                bells: newState.bells,
+                lessons: newState.lessons
+              })
+            );
+          } catch (error) {
+            console.error(error);
+          }
+
+          return newState;
+        }
+      }
+
+      if (raw) {
+        try {
+          return normalizeState(JSON.parse(raw));
+        } catch (error) {
+          console.error(error);
+        }
+      }
+
+      if (external && typeof external === 'object') {
+        return normalizeState(external);
+      }
+
+      return {
+        bells: [],
+        lessons: []
+      };
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({
+            version: 1,
+            bells: state.bells,
+            lessons: state.lessons
+          })
+        );
+      } catch (error) {
+        setStatus('Не удалось сохранить данные в браузере: ' + error.message, true);
+      }
+    }
+
+    function makeConfig() {
+      return {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        bells: state.bells,
+        lessons: state.lessons
+      };
+    }
+
+    function configToJs(config) {
+      return 'window.SCHEDULE_CONFIG = ' + JSON.stringify(config, null, 2) + ';\n';
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 1000);
+    }
+
+    function downloadJsConfig(config) {
+      const blob = new Blob([configToJs(config)], {
+        type: 'text/javascript'
+      });
+
+      downloadBlob(blob, 'schedule-config.js');
+    }
+
+    function downloadJsonConfig(config) {
+      const blob = new Blob([JSON.stringify(config, null, 2)], {
+        type: 'application/json'
+      });
+
+      downloadBlob(blob, 'schedule-config.json');
+    }
+
+    function exportJsOnly() {
+      downloadJsConfig(makeConfig());
+      setStatus('Выгружен schedule-config.js.');
+    }
+
+    function exportJsonOnly() {
+      downloadJsonConfig(makeConfig());
+      setStatus('Выгружен schedule-config.json.');
+    }
+
+    function exportBoth() {
+      const config = makeConfig();
+
+      downloadJsConfig(config);
+
+      // Некоторые браузеры могут блокировать одновременную загрузку двух файлов.
+      // Если браузер заблокировал второй файл, используй кнопку "Только .json".
+      setTimeout(() => {
+        downloadJsonConfig(config);
+      }, 350);
+
+      setStatus('Выгружаются schedule-config.js и schedule-config.json.');
+    }
+
+    function addDays(date, days) {
+      const result = new Date(date);
+      result.setDate(result.getDate() + days);
+      return result;
+    }
+
+    function startOfWeek(date) {
+      const result = new Date(date);
+      const shift = (result.getDay() + 6) % 7;
+      result.setDate(result.getDate() - shift);
+      result.setHours(0, 0, 0, 0);
+      return result;
+    }
+
+    function formatDate(date) {
+      return date.toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit'
+      });
+    }
+
+    function overlaps(a, b) {
+      return (
+        a.day === b.day &&
+        timeToMin(a.start) < timeToMin(b.end) &&
+        timeToMin(b.start) < timeToMin(a.end)
+      );
+    }
+
+    function getConflictPairs() {
+      const pairs = [];
+      const lessons = state.lessons;
+
+      for (let i = 0; i < lessons.length; i++) {
+        for (let j = i + 1; j < lessons.length; j++) {
+          if (overlaps(lessons[i], lessons[j])) {
+            pairs.push([lessons[i], lessons[j]]);
+          }
+        }
+      }
+
+      return pairs;
+    }
+
+    function renderAll() {
+      const pairs = getConflictPairs();
+      const conflictIds = new Set(pairs.flatMap(([a, b]) => [a.id, b.id]));
+
+      renderConflicts(pairs);
+      renderWeeks(conflictIds);
+      renderLessonsTable();
+      renderBellsTable();
+      renderBellOptions();
+    }
+
+    function renderConflicts(pairs) {
+      conflictsEl.innerHTML = '';
+
+      if (!pairs.length) {
+        const p = document.createElement('p');
+        p.className = 'ok';
+        p.textContent = 'Пересечений нет.';
+        conflictsEl.appendChild(p);
+        return;
+      }
+
+      const p = document.createElement('p');
+      p.textContent = `Найдено пересечений: ${pairs.length}. Такие занятия лучше развести по времени.`;
+      conflictsEl.appendChild(p);
+
+      const ul = document.createElement('ul');
+      ul.className = 'conflict-list';
+
+      for (const [a, b] of pairs) {
+        const li = document.createElement('li');
+        li.textContent = `${a.title} (${dayShort[a.day - 1]} ${a.start}–${a.end}) пересекается с ${b.title} (${dayShort[b.day - 1]} ${b.start}–${b.end})`;
+        ul.appendChild(li);
+      }
+
+      conflictsEl.appendChild(ul);
+    }
+
+    function renderWeeks(conflictIds) {
+      weeksEl.innerHTML = '';
+
+      const currentMonday = startOfWeek(new Date());
+      const nextMonday = addDays(currentMonday, 7);
+
+      weeksEl.appendChild(makeWeekBlock('Текущая неделя', currentMonday, conflictIds));
+      weeksEl.appendChild(makeWeekBlock('Следующая неделя', nextMonday, conflictIds));
+    }
+
+    function makeWeekBlock(title, monday, conflictIds) {
+      const block = document.createElement('div');
+      block.className = 'week-block';
+
+      const h = document.createElement('h3');
+      h.textContent = `${title}: ${formatDate(monday)} — ${formatDate(addDays(monday, 6))}`;
+      block.appendChild(h);
+
+      const grid = document.createElement('div');
+      grid.className = 'week';
+
+      for (let i = 0; i < 7; i++) {
+        const date = addDays(monday, i);
+        const dayNum = (date.getDay() + 6) % 7 + 1;
+
+        const dayEl = document.createElement('div');
+        dayEl.className = 'day';
+
+        const header = document.createElement('div');
+        header.className = 'day-header';
+
+        const headerText = document.createElement('span');
+        headerText.textContent = `${dayShort[dayNum - 1]} ${formatDate(date)}`;
+
+        const addBtn = document.createElement('button');
+        addBtn.type = 'button';
+        addBtn.className = 'day-add';
+        addBtn.textContent = '+';
+        addBtn.title = `Добавить занятие на ${dayFull[dayNum - 1]}`;
+
+        addBtn.addEventListener('click', () => {
+          if (editingLessonId) {
+            stopLessonEdit();
+          }
+
+          lessonDay.value = String(dayNum);
+
+          lessonForm.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+
+          lessonTitle.focus();
+
+          setStatus(`Выбран день: ${dayFull[dayNum - 1]}. Осталось заполнить название и время.`);
+        });
+
+        header.append(headerText, addBtn);
+        dayEl.appendChild(header);
+
+        const dayLessons = state.lessons
+          .filter(lesson => lesson.day === dayNum)
+          .sort((a, b) => timeToMin(a.start) - timeToMin(b.start));
+
+        if (!dayLessons.length) {
+          const empty = document.createElement('div');
+          empty.className = 'empty';
+          empty.textContent = '—';
+          dayEl.appendChild(empty);
+        }
+
+        for (const lesson of dayLessons) {
+          const card = document.createElement('div');
+          card.className = `lesson type-${lesson.type}` + (conflictIds.has(lesson.id) ? ' conflict' : '');
+
+          card.title = typeLabel(lesson.type) + (conflictIds.has(lesson.id) ? ', есть пересечение' : '');
+
+          const time = document.createElement('div');
+          time.className = 'time';
+          time.textContent = `${lesson.start}–${lesson.end}`;
+
+          const name = document.createElement('div');
+          name.textContent = lesson.title;
+
+          card.append(time, name);
+          dayEl.appendChild(card);
+        }
+
+        grid.appendChild(dayEl);
+      }
+
+      block.appendChild(grid);
+      return block;
+    }
+
+    function renderLessonsTable() {
+      lessonsTbody.innerHTML = '';
+
+      const lessons = [...state.lessons].sort((a, b) => {
+        return (
+          a.day - b.day ||
+          timeToMin(a.start) - timeToMin(b.start) ||
+          a.title.localeCompare(b.title, 'ru')
+        );
+      });
+
+      if (!lessons.length) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 5;
+        td.textContent = 'Занятий пока нет.';
+        tr.appendChild(td);
+        lessonsTbody.appendChild(tr);
+        return;
+      }
+
+      for (const lesson of lessons) {
+        const tr = document.createElement('tr');
+
+        const tdTitle = document.createElement('td');
+        tdTitle.textContent = lesson.title;
+
+        const tdDay = document.createElement('td');
+        tdDay.textContent = dayFull[lesson.day - 1];
+
+        const tdType = document.createElement('td');
+        tdType.textContent = typeLabel(lesson.type);
+
+        const tdTime = document.createElement('td');
+        tdTime.textContent = `${lesson.start}–${lesson.end}`;
+
+        const tdActions = document.createElement('td');
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.textContent = 'Изменить';
+        editBtn.addEventListener('click', () => startLessonEdit(lesson.id));
+
+        const duplicateBtn = document.createElement('button');
+        duplicateBtn.type = 'button';
+        duplicateBtn.textContent = 'Дублировать';
+        duplicateBtn.addEventListener('click', () => duplicateLesson(lesson.id));
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.textContent = 'Удалить';
+        deleteBtn.addEventListener('click', () => deleteLesson(lesson.id));
+
+        actions.append(editBtn, duplicateBtn, deleteBtn);
+        tdActions.appendChild(actions);
+
+        tr.append(tdTitle, tdDay, tdType, tdTime, tdActions);
+        lessonsTbody.appendChild(tr);
+      }
+    }
+
+    function renderBellsTable() {
+      bellsTbody.innerHTML = '';
+
+      const bells = [...state.bells].sort((a, b) => {
+        return timeToMin(a.start) - timeToMin(b.start) || a.name.localeCompare(b.name, 'ru');
+      });
+
+      if (!bells.length) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 4;
+        td.textContent = 'Звонков пока нет.';
+        tr.appendChild(td);
+        bellsTbody.appendChild(tr);
+        return;
+      }
+
+      for (const bell of bells) {
+        const tr = document.createElement('tr');
+
+        const tdName = document.createElement('td');
+        tdName.textContent = bell.name;
+
+        const tdStart = document.createElement('td');
+        tdStart.textContent = bell.start;
+
+        const tdEnd = document.createElement('td');
+        tdEnd.textContent = bell.end;
+
+        const tdActions = document.createElement('td');
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.textContent = 'Удалить';
+        deleteBtn.addEventListener('click', () => deleteBell(bell.id));
+
+        tdActions.appendChild(deleteBtn);
+
+        tr.append(tdName, tdStart, tdEnd, tdActions);
+        bellsTbody.appendChild(tr);
+      }
+    }
+
+    function renderBellOptions() {
+      const currentValue = bellTemplate.value;
+
+      bellTemplate.innerHTML = '';
+
+      const empty = document.createElement('option');
+      empty.value = '';
+      empty.textContent = 'Звонки: не выбрано';
+      bellTemplate.appendChild(empty);
+
+      const bells = [...state.bells].sort((a, b) => {
+        return timeToMin(a.start) - timeToMin(b.start) || a.name.localeCompare(b.name, 'ru');
+      });
+
+      for (const bell of bells) {
+        const option = document.createElement('option');
+        option.value = bell.id;
+        option.textContent = `${bell.name}: ${bell.start}–${bell.end}`;
+        bellTemplate.appendChild(option);
+      }
+
+      bellTemplate.value = bells.some(bell => bell.id === currentValue) ? currentValue : '';
+    }
+
+    function startLessonEdit(id) {
+      const lesson = state.lessons.find(item => item.id === id);
+      if (!lesson) return;
+
+      editingLessonId = id;
+
+      lessonTitle.value = lesson.title;
+      lessonDay.value = String(lesson.day);
+      lessonType.value = lesson.type;
+      lessonStart.value = lesson.start;
+      lessonEnd.value = lesson.end;
+
+      lessonSubmit.textContent = 'Сохранить';
+      lessonCancel.classList.remove('hidden');
+
+      setStatus('Редактируем занятие. Нажми «Сохранить» или «Отмена».', false);
+
+      document.getElementById('lesson-form').scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+
+    function stopLessonEdit() {
+      editingLessonId = null;
+
+      lessonForm.reset();
+      lessonStart.value = '08:30';
+      lessonEnd.value = '09:15';
+
+      lessonSubmit.textContent = 'Добавить';
+      lessonCancel.classList.add('hidden');
+
+      bellTemplate.value = '';
+    }
+
+    function duplicateLesson(id) {
+      const lesson = state.lessons.find(item => item.id === id);
+      if (!lesson) return;
+
+      editingLessonId = null;
+
+      lessonTitle.value = lesson.title;
+      lessonDay.value = String(lesson.day);
+      lessonType.value = lesson.type;
+      lessonStart.value = lesson.start;
+      lessonEnd.value = lesson.end;
+
+      lessonSubmit.textContent = 'Добавить';
+      lessonCancel.classList.add('hidden');
+
+      lessonForm.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+
+      lessonTitle.focus();
+      lessonTitle.select();
+
+      setStatus('Занятие скопировано в форму. Нажми «Добавить», если всё верно.');
+    }
+
+    function deleteLesson(id) {
+      if (!confirm('Удалить занятие?')) return;
+
+      state.lessons = state.lessons.filter(lesson => lesson.id !== id);
+
+      if (editingLessonId === id) {
+        stopLessonEdit();
+      }
+
+      saveState();
+      renderAll();
+      setStatus('Занятие удалено.');
+    }
+
+    function deleteBell(id) {
+      if (!confirm('Удалить звонок?')) return;
+
+      state.bells = state.bells.filter(bell => bell.id !== id);
+
+      saveState();
+      renderAll();
+      setStatus('Звонок удалён.');
+    }
+
+    lessonForm.addEventListener('submit', event => {
+      event.preventDefault();
+
+      const title = lessonTitle.value.trim();
+      const day = Number(lessonDay.value);
+      const type = lessonType.value === 'personal' ? 'personal' : 'class';
+      const start = lessonStart.value;
+      const end = lessonEnd.value;
+
+      if (!title) {
+        setStatus('Укажи название занятия.', true);
+        return;
+      }
+
+      if (!validTime(start) || !validTime(end)) {
+        setStatus('Проверь формат времени: ЧЧ:ММ.', true);
+        return;
+      }
+
+      if (timeToMin(end) <= timeToMin(start)) {
+        setStatus('Конец должен быть позже начала.', true);
+        return;
+      }
+
+      const data = {
+        title,
+        day,
+        type,
+        start,
+        end
+      };
+
+      const wasEditing = editingLessonId;
+
+      if (wasEditing) {
+        const index = state.lessons.findIndex(lesson => lesson.id === wasEditing);
+
+        if (index >= 0) {
+          state.lessons[index] = {
+            ...state.lessons[index],
+            ...data
+          };
+        }
+
+        saveState();
+        stopLessonEdit();
+        renderAll();
+        setStatus('Занятие обновлено.');
+      } else {
+        state.lessons.push({
+          id: uid(),
+          ...data
+        });
+
+        saveState();
+        renderAll();
+
+        if (lessonContinuous.checked) {
+          const duration = timeToMin(end) - timeToMin(start);
+
+          let nextStart = timeToMin(start) + duration;
+          let nextEnd = timeToMin(end) + duration;
+
+          if (nextEnd >= 1440) {
+            nextStart = timeToMin('08:30');
+            nextEnd = timeToMin('09:15');
+          }
+
+          lessonTitle.value = '';
+          lessonStart.value = minutesToTime(nextStart);
+          lessonEnd.value = minutesToTime(nextEnd);
+          bellTemplate.value = '';
+          lessonTitle.focus();
+
+          setStatus('Занятие добавлено. Можно добавлять дальше.');
+        } else {
+          lessonForm.reset();
+          lessonStart.value = '08:30';
+          lessonEnd.value = '09:15';
+          lessonTitle.focus();
+
+          setStatus('Занятие добавлено.');
+        }
+      }
+    });
+
+    lessonCancel.addEventListener('click', () => {
+      stopLessonEdit();
+      setStatus('Редактирование отменено.');
+    });
+
+    bellTemplate.addEventListener('change', () => {
+      const bell = state.bells.find(item => item.id === bellTemplate.value);
+      if (!bell) return;
+
+      lessonStart.value = bell.start;
+      lessonEnd.value = bell.end;
+    });
+
+    bellForm.addEventListener('submit', event => {
+      event.preventDefault();
+
+      const name = bellName.value.trim();
+      const start = bellStart.value;
+      const end = bellEnd.value;
+
+      if (!name) {
+        setStatus('Укажи название звонка.', true);
+        return;
+      }
+
+      if (!validTime(start) || !validTime(end)) {
+        setStatus('Проверь формат времени звонка: ЧЧ:ММ.', true);
+        return;
+      }
+
+      if (timeToMin(end) <= timeToMin(start)) {
+        setStatus('Конец звонка должен быть позже начала.', true);
+        return;
+      }
+
+      state.bells.push({
+        id: uid(),
+        name,
+        start,
+        end
+      });
+
+      saveState();
+      renderAll();
+
+      bellForm.reset();
+      bellStart.value = '08:30';
+      bellEnd.value = '09:15';
+
+      setStatus('Звонок добавлен.');
+    });
+
+    exportBtn.addEventListener('click', exportBoth);
+    exportJsBtn.addEventListener('click', exportJsOnly);
+    exportJsonBtn.addEventListener('click', exportJsonOnly);
+
+    importBtn.addEventListener('click', () => {
+      importFile.click();
+    });
+
+    importFile.addEventListener('change', async () => {
+      const file = importFile.files && importFile.files[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        const data = parseConfigText(text);
+        const normalized = normalizeState(data);
+
+        const message =
+          `Заменить текущие данные?` +
+          `\nЗанятий будет загружено: ${normalized.lessons.length}.` +
+          `\nЗвонков будет загружено: ${normalized.bells.length}.`;
+
+        if (!confirm(message)) {
+          return;
+        }
+
+        state = normalized;
+        stopLessonEdit();
+        saveState();
+        renderAll();
+        setStatus('Конфиг загружен.');
+      } catch (error) {
+        setStatus('Ошибка загрузки конфига: ' + error.message, true);
+      } finally {
+        importFile.value = '';
+      }
+    });
+
+    clearBtn.addEventListener('click', () => {
+      if (!confirm('Удалить все занятия и звонки?')) return;
+
+      state = {
+        bells: [],
+        lessons: []
+      };
+
+      stopLessonEdit();
+      saveState();
+      renderAll();
+      setStatus('Очищено.');
+    });
+
+    state = loadState();
+    renderAll();
+  </script>
+</body>
+</html>
